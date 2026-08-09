@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../providers/prompt_providers.dart';
 import '../../widgets/cards/prompt_card.dart';
@@ -13,138 +14,139 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final promptsAsync = ref.watch(promptsProvider);
     final statsAsync = ref.watch(statsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selectedCategory = ref.watch(selectedCategoryProvider);
 
-    return SafeArea(
-      child: CustomScrollView(
+    return Scaffold(
+      backgroundColor: AppColors.bgOf(context),
+      body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // Header
+          // ─── HEADER BAR ──────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-              child: _buildHeader(context, statsAsync),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+              child: _buildHeader(context, ref, isDark),
             ),
           ),
-          // Stats Row
+
+          // ─── 2D ABSTRACT HERO BANNER (Inspired by Reference UI) ──────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: statsAsync.when(
-                data: (stats) => _buildStatsRow(stats),
-                loading: () => _buildStatsShimmer(),
+                data: (stats) => _buildAbstractHeroCard(
+                    context, stats['total_prompts'] ?? 0, isDark),
+                loading: () => ShimmerBox(
+                  width: double.infinity,
+                  height: 180,
+                  borderRadius: BorderRadius.circular(32),
+                ),
                 error: (_, __) => const SizedBox.shrink(),
               ),
             ),
           ),
-          // Section: Favorit
+
+          // ─── CATEGORY FILTER PILLS (Organic Squircle) ─────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
-              child: _buildSectionHeader(
-                context,
-                '⭐ Prompt Favorit',
-                onSeeAll: () {
-                  ref.read(promptsProvider.notifier).setFavoritesOnly(true);
-                  context.go('/prompts');
-                },
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Categories',
+                    style: AppTextStyles.headingSmall.copyWith(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimaryOf(context),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildCategoryFilterRow(context, ref, selectedCategory, isDark),
+                ],
               ),
             ),
           ),
-          // Favorites horizontal scroll
+
+          // ─── SECTION TITLE: VAULT PROMPTS ────────────────────────────────
           SliverToBoxAdapter(
-            child: SizedBox(
-              height: 200,
-              child: promptsAsync.when(
-                data: (prompts) {
-                  final favs = prompts.where((p) => p.isFavorite).toList();
-                  if (favs.isEmpty) {
-                    return _buildEmptyFavorites(context);
-                  }
-                  return ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: favs.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, i) => SizedBox(
-                      width: 260,
-                      child: PromptCard(
-                        prompt: favs[i],
-                        onToggleFavorite: () => ref
-                            .read(promptsProvider.notifier)
-                            .toggleFavorite(favs[i].id, favs[i].isFavorite),
-                        showTilt: true,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+              child: Row(
+                children: [
+                  Text(
+                    'My Prompts',
+                    style: AppTextStyles.headingMedium.copyWith(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimaryOf(context),
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => context.go('/prompts'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.darkPillBg
+                            : const Color(0xFFE8EAF0),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        'View all',
+                        style: AppTextStyles.labelMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: AppColors.textPrimaryOf(context),
+                        ),
                       ),
                     ),
-                  );
-                },
-                loading: () => ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: 3,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (_, __) => ShimmerBox(
-                    width: 260,
-                    height: 180,
-                    borderRadius: BorderRadius.circular(20),
                   ),
-                ),
-                error: (e, _) => Center(
-                  child: Text('Error: $e',
-                      style: AppTextStyles.bodySmall),
-                ),
+                ],
               ),
             ),
           ),
-          // Section: Terbaru
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
-              child: _buildSectionHeader(
-                context,
-                '🕐 Prompt Terbaru',
-                onSeeAll: () => context.go('/prompts'),
-              ),
-            ),
-          ),
-          // Recent prompts grid
+
+          // ─── PROMPTS GRID / LIST ─────────────────────────────────────────
           promptsAsync.when(
             data: (prompts) {
-              final recent = prompts.take(6).toList();
-              if (recent.isEmpty) {
+              if (prompts.isEmpty) {
                 return SliverToBoxAdapter(
-                  child: _buildEmptyPrompts(context),
+                  child: _buildEmptyPromptsState(context, isDark),
                 );
               }
               return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                padding: const EdgeInsets.fromLTRB(24, 4, 24, 120),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, i) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.only(bottom: 16),
                       child: PromptCard(
-                        prompt: recent[i],
+                        prompt: prompts[i],
                         onToggleFavorite: () => ref
                             .read(promptsProvider.notifier)
-                            .toggleFavorite(
-                                recent[i].id, recent[i].isFavorite),
+                            .toggleFavorite(prompts[i].id, prompts[i].isFavorite),
                         showTilt: false,
                       ),
                     ),
-                    childCount: recent.length,
+                    childCount: prompts.length,
                   ),
                 ),
               );
             },
             loading: () => SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 120),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (_, __) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.only(bottom: 16),
                     child: ShimmerBox(
                       width: double.infinity,
                       height: 160,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(28),
                     ),
                   ),
                   childCount: 3,
@@ -152,9 +154,13 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
             error: (e, _) => SliverToBoxAdapter(
-              child: Center(
-                  child: Text('Gagal memuat: $e',
-                      style: AppTextStyles.bodyMedium)),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Center(
+                  child: Text('Failed to load prompts: $e',
+                      style: AppTextStyles.bodyMedium),
+                ),
+              ),
             ),
           ),
         ],
@@ -162,228 +168,393 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, AsyncValue<Map<String, int>> stats) {
-    final now = DateTime.now();
-    final hour = now.hour;
-    final greeting = hour < 12
-        ? '🌅 Selamat Pagi!'
-        : hour < 17
-            ? '☀️ Selamat Siang!'
-            : hour < 20
-                ? '🌇 Selamat Sore!'
-                : '🌙 Selamat Malam!';
-
+  // ─── HEADER WIDGET ────────────────────────────────────────────────────────
+  Widget _buildHeader(BuildContext context, WidgetRef ref, bool isDark) {
     return Row(
       children: [
-        Expanded(
-          child: Column(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Welcome back',
+              style: AppTextStyles.bodySmall.copyWith(
+                fontSize: 12,
+                color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'PromptVault Studio',
+              style: AppTextStyles.displayMedium.copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimaryOf(context),
+              ),
+            ),
+          ],
+        ),
+        const Spacer(),
+        // Light / Dark Theme Toggle Button
+        GestureDetector(
+          onTap: () {
+            final current = ref.read(themeModeProvider);
+            ref.read(themeModeProvider.notifier).state =
+                current == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+          },
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E202E) : Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+              border: Border.all(
+                color: isDark ? const Color(0xFF2E3248) : const Color(0xFFE5E7EB),
+              ),
+            ),
+            child: Icon(
+              isDark ? Iconsax.sun_1 : Iconsax.moon,
+              size: 20,
+              color: isDark ? const Color(0xFFF59E0B) : const Color(0xFF18181B),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        // Search Button
+        GestureDetector(
+          onTap: () => context.go('/prompts'),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E202E) : Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+              border: Border.all(
+                color: isDark ? const Color(0xFF2E3248) : const Color(0xFFE5E7EB),
+              ),
+            ),
+            child: Icon(
+              Iconsax.search_normal,
+              size: 20,
+              color: isDark ? Colors.white : const Color(0xFF18181B),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── 2D ABSTRACT HERO BANNER ─────────────────────────────────────────────
+  Widget _buildAbstractHeroCard(BuildContext context, int totalCount, bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E202E) : const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+        border: Border.all(
+          color: isDark ? const Color(0xFF2E3248) : const Color(0xFFEEF0F5),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                greeting,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Get your prompts',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontSize: 14,
+                        color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Swipe to explore',
+                      style: AppTextStyles.headingLarge.copyWith(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                        color: AppColors.textPrimaryOf(context),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 4),
-              ShaderMask(
-                shaderCallback: (bounds) =>
-                    AppColors.primaryGradient.createShader(bounds),
-                child: Text(
-                  'PromptVault',
-                  style: AppTextStyles.displayMedium.copyWith(
-                    color: Colors.white,
-                  ),
+              // Pill Badge (24x style from Reference Image)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.pastelLime : const Color(0xFF18181B),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$totalCount',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? const Color(0xFF12131A) : Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.black26 : Colors.white24,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'Vaulted',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFF12131A) : Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-        ),
-        // Search shortcut
-        GestureDetector(
-          onTap: () => context.go('/prompts'),
-          child: Container(
-            width: 42,
-            height: 42,
+          const SizedBox(height: 20),
+
+          // Action Bar inside Banner Card
+          Container(
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              color: AppColors.card,
-              border: Border.all(color: AppColors.border),
+              color: isDark ? AppColors.darkLime : const Color(0xFFE2F7C2), // Soft Lime
+              borderRadius: BorderRadius.circular(24),
             ),
-            child: const Icon(
-              Icons.search_rounded,
-              color: AppColors.textSecondary,
-              size: 20,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatsRow(Map<String, int> stats) {
-    return Row(
-      children: [
-        _StatChip(
-          icon: '⚡',
-          label: 'Total Prompt',
-          value: '${stats['total_prompts'] ?? 0}',
-          color: AppColors.primary,
-        ),
-        const SizedBox(width: 10),
-        _StatChip(
-          icon: '⭐',
-          label: 'Favorit',
-          value: '${stats['favorites'] ?? 0}',
-          color: AppColors.secondary,
-        ),
-        const SizedBox(width: 10),
-        _StatChip(
-          icon: '📂',
-          label: 'Kategori',
-          value: '${stats['categories'] ?? 0}',
-          color: AppColors.accent,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatsShimmer() {
-    return Row(
-      children: List.generate(
-          3,
-          (_) => Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: ShimmerBox(
-                    width: double.infinity,
-                    height: 72,
-                    borderRadius: BorderRadius.circular(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF18181B),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Iconsax.flash_15,
+                    color: Color(0xFFD6F498),
+                    size: 20,
                   ),
                 ),
-              )),
-    );
-  }
-
-  Widget _buildSectionHeader(
-    BuildContext context,
-    String title, {
-    VoidCallback? onSeeAll,
-  }) {
-    return Row(
-      children: [
-        Text(title, style: AppTextStyles.headingSmall),
-        const Spacer(),
-        if (onSeeAll != null)
-          GestureDetector(
-            onTap: onSeeAll,
-            child: Text(
-              'Lihat Semua',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildEmptyFavorites(BuildContext context) {
-    return Center(
-      child: GlassCard(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('⭐', style: TextStyle(fontSize: 28)),
-            const SizedBox(height: 8),
-            Text(
-              'Belum ada favorit',
-              style: AppTextStyles.bodySmall,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyPrompts(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: GlassCard(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            const Text('⚡', style: TextStyle(fontSize: 48)),
-            const SizedBox(height: 16),
-            Text(
-              'Vault Kamu Masih Kosong',
-              style: AppTextStyles.headingSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Mulai tambahkan prompt engineering\npertama kamu!',
-              style: AppTextStyles.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            GlowButton(
-              label: 'Tambah Prompt',
-              icon: Icons.add_rounded,
-              onPressed: () => context.push('/prompt/create'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  final String icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: color.withValues(alpha: 0.08),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(icon, style: const TextStyle(fontSize: 14)),
-                const SizedBox(width: 4),
-                Text(
-                  value,
-                  style: AppTextStyles.headingMedium.copyWith(
-                    color: color,
-                    fontSize: 20,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'AI Prompt Studio',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: isDark ? Colors.white : const Color(0xFF12131A),
+                        ),
+                      ),
+                      Text(
+                        'Optimize & score your prompts',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? Colors.white70 : const Color(0xFF4B5563),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => context.push('/prompt/build'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF18181B),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Text(
+                      'Build',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 2),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── CATEGORY FILTER ROW ──────────────────────────────────────────────────
+  Widget _buildCategoryFilterRow(
+      BuildContext context, WidgetRef ref, String selectedId, bool isDark) {
+    final categories = [
+      {'id': '', 'name': 'All', 'icon': Iconsax.category},
+      {'id': 'Coding', 'name': 'Coding', 'icon': Iconsax.code},
+      {'id': 'Writing', 'name': 'Writing', 'icon': Iconsax.edit_2},
+      {'id': 'Riset', 'name': 'Research', 'icon': Iconsax.search_status},
+      {'id': 'Analisis', 'name': 'Analysis', 'icon': Iconsax.chart_21},
+      {'id': 'Kreatif', 'name': 'Creative', 'icon': Iconsax.brush_1},
+      {'id': 'Bisnis', 'name': 'Business', 'icon': Iconsax.briefcase},
+    ];
+
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final cat = categories[i];
+          final isSelected = selectedId == cat['id'];
+          final IconData iconData = cat['icon'] as IconData;
+
+          return GestureDetector(
+            onTap: () {
+              ref.read(selectedCategoryProvider.notifier).state =
+                  cat['id'] as String;
+              ref
+                  .read(promptsProvider.notifier)
+                  .setCategory(cat['id'] as String);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? (isDark ? AppColors.pastelLime : const Color(0xFF18181B))
+                    : (isDark ? const Color(0xFF1E202E) : Colors.white),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: isSelected
+                      ? Colors.transparent
+                      : (isDark ? const Color(0xFF2E3248) : const Color(0xFFE5E7EB)),
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: (isDark
+                                  ? AppColors.pastelLime
+                                  : const Color(0xFF18181B))
+                              .withValues(alpha: 0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        )
+                      ]
+                    : [],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    iconData,
+                    size: 16,
+                    color: isSelected
+                        ? (isDark ? const Color(0xFF12131A) : Colors.white)
+                        : (isDark ? Colors.white70 : const Color(0xFF4B5563)),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    cat['name'] as String,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                      color: isSelected
+                          ? (isDark ? const Color(0xFF12131A) : Colors.white)
+                          : (isDark ? Colors.white70 : const Color(0xFF4B5563)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ─── EMPTY PROMPTS STATE ─────────────────────────────────────────────────
+  Widget _buildEmptyPromptsState(BuildContext context, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E202E) : Colors.white,
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(
+            color: isDark ? const Color(0xFF2E3248) : const Color(0xFFEEF0F5),
+          ),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE2D9FF), // Soft Lavender
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Iconsax.document_text_1,
+                size: 32,
+                color: Color(0xFF18181B),
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
-              label,
-              style: AppTextStyles.captionText.copyWith(fontSize: 10),
+              'Your Vault is Empty',
+              style: AppTextStyles.headingMedium.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimaryOf(context),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Start building your first AI prompt now!',
+              style: AppTextStyles.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () => context.push('/prompt/build'),
+              icon: const Icon(Iconsax.add, size: 18),
+              label: const Text('Create Prompt'),
             ),
           ],
         ),
