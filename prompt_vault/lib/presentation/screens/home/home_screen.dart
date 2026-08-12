@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/category_model.dart';
 import '../../providers/prompt_providers.dart';
 import '../../widgets/cards/prompt_card.dart';
 import '../../widgets/animations/premium_widgets.dart';
@@ -311,7 +312,7 @@ class HomeScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.pastelLime : const Color(0xFF18181B),
+                  color: AppColors.pastelLime,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -319,10 +320,10 @@ class HomeScreen extends ConsumerWidget {
                   children: [
                     Text(
                       '$totalCount',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
-                        color: isDark ? const Color(0xFF12131A) : Colors.white,
+                        color: Color(0xFF12131A),
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -330,15 +331,15 @@ class HomeScreen extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.black26 : Colors.white24,
+                        color: Colors.black26,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Vaulted',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? const Color(0xFF12131A) : Colors.white,
+                          color: Color(0xFF12131A),
                         ),
                       ),
                     ),
@@ -353,8 +354,11 @@ class HomeScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkLime : const Color(0xFFE2F7C2), // Soft Lime
+              color: isDark ? const Color(0xFF252A3E) : const Color(0xFFE2F7C2),
               borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: isDark ? const Color(0xFF323852) : Colors.transparent,
+              ),
             ),
             child: Row(
               children: [
@@ -362,12 +366,12 @@ class HomeScreen extends ConsumerWidget {
                   width: 40,
                   height: 40,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF18181B),
+                    color: AppColors.pastelLime,
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Iconsax.flash_15,
-                    color: Color(0xFFD6F498),
+                    color: Color(0xFF12131A),
                     size: 20,
                   ),
                 ),
@@ -388,7 +392,7 @@ class HomeScreen extends ConsumerWidget {
                         'Optimize & score your prompts',
                         style: TextStyle(
                           fontSize: 11,
-                          color: isDark ? Colors.white70 : const Color(0xFF4B5563),
+                          color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563),
                         ),
                       ),
                     ],
@@ -400,14 +404,14 @@ class HomeScreen extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF18181B),
+                      color: AppColors.pastelLime,
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: const Text(
                       'Build',
                       style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF12131A),
+                        fontWeight: FontWeight.w800,
                         fontSize: 12,
                       ),
                     ),
@@ -424,87 +428,84 @@ class HomeScreen extends ConsumerWidget {
   // ─── CATEGORY FILTER ROW ──────────────────────────────────────────────────
   Widget _buildCategoryFilterRow(
       BuildContext context, WidgetRef ref, String selectedId, bool isDark) {
-    final categories = [
-      {'id': '', 'name': 'All', 'icon': Iconsax.category},
-      {'id': 'Coding', 'name': 'Coding', 'icon': Iconsax.code},
-      {'id': 'Writing', 'name': 'Writing', 'icon': Iconsax.edit_2},
-      {'id': 'Riset', 'name': 'Research', 'icon': Iconsax.search_status},
-      {'id': 'Analisis', 'name': 'Analysis', 'icon': Iconsax.chart_21},
-      {'id': 'Kreatif', 'name': 'Creative', 'icon': Iconsax.brush_1},
-      {'id': 'Bisnis', 'name': 'Business', 'icon': Iconsax.briefcase},
-    ];
+    final categoriesAsync = ref.watch(categoriesProvider);
 
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final cat = categories[i];
-          final isSelected = selectedId == cat['id'];
-          final IconData iconData = cat['icon'] as IconData;
+    return categoriesAsync.when(
+      data: (cats) {
+        final categories = [
+          CategoryModel(id: '', name: 'All', icon: 'globe', colorHex: '#6C63FF'),
+          ...cats,
+        ];
 
-          return GestureDetector(
-            onTap: () {
-              ref.read(selectedCategoryProvider.notifier).state =
-                  cat['id'] as String;
-              ref
-                  .read(promptsProvider.notifier)
-                  .setCategory(cat['id'] as String);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? (isDark ? AppColors.pastelLime : const Color(0xFF18181B))
-                    : (isDark ? const Color(0xFF1E202E) : Colors.white),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                  color: isSelected
-                      ? Colors.transparent
-                      : (isDark ? const Color(0xFF2E3248) : const Color(0xFFE5E7EB)),
-                ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: (isDark
-                                  ? AppColors.pastelLime
-                                  : const Color(0xFF18181B))
-                              .withValues(alpha: 0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        )
-                      ]
-                    : [],
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    iconData,
-                    size: 16,
+        return SizedBox(
+          height: 44,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: categories.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (context, i) {
+              final cat = categories[i];
+              final isSelected = selectedId == cat.id;
+
+              return GestureDetector(
+                onTap: () {
+                  ref.read(selectedCategoryProvider.notifier).state = cat.id;
+                  ref.read(promptsProvider.notifier).setCategory(cat.id);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
                     color: isSelected
-                        ? (isDark ? const Color(0xFF12131A) : Colors.white)
-                        : (isDark ? Colors.white70 : const Color(0xFF4B5563)),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    cat['name'] as String,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                        ? (isDark ? AppColors.pastelLime : const Color(0xFF18181B))
+                        : (isDark ? const Color(0xFF1E202E) : Colors.white),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
                       color: isSelected
-                          ? (isDark ? const Color(0xFF12131A) : Colors.white)
-                          : (isDark ? Colors.white70 : const Color(0xFF4B5563)),
+                          ? Colors.transparent
+                          : (isDark ? const Color(0xFF2E3248) : const Color(0xFFE5E7EB)),
                     ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: (isDark ? AppColors.pastelLime : const Color(0xFF18181B))
+                                  .withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            )
+                          ]
+                        : [],
                   ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        cat.iconsaxIcon,
+                        size: 16,
+                        color: isSelected
+                            ? (isDark ? const Color(0xFF12131A) : Colors.white)
+                            : (isDark ? Colors.white70 : const Color(0xFF4B5563)),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        cat.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          color: isSelected
+                              ? (isDark ? const Color(0xFF12131A) : Colors.white)
+                              : (isDark ? Colors.white70 : const Color(0xFF4B5563)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+      loading: () => const SizedBox(height: 44),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 

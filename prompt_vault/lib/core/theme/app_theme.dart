@@ -119,6 +119,19 @@ class AppColors {
   static Color cardOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkCard : lightCard;
 
+  static Color cardElevatedOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? darkCardElevated : lightCardElevated;
+
+  static Color primaryOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFFA78BFA)
+          : primary;
+
+  static Color primaryContainerOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFFA78BFA).withValues(alpha: 0.18)
+          : primary.withValues(alpha: 0.08);
+
   static Color textPrimaryOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
           ? darkTextPrimary
@@ -128,6 +141,16 @@ class AppColors {
       Theme.of(context).brightness == Brightness.dark
           ? darkTextSecondary
           : lightTextSecondary;
+
+  static Color textMutedOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? darkTextMuted
+          : lightTextMuted;
+
+  static Color pillBgOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? darkPillBg
+          : const Color(0xFFE8EAF0);
 
   static Color borderOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkBorder : lightBorder;
